@@ -105,9 +105,13 @@ def unpad_input(hidden_states, attention_mask):
         cu_seqlens: (batch + 1), the cumulative sequence lengths, used to index into hidden_states.
         max_seqlen_in_batch: int
     """
+    # 计算每个batch中的有效长度
     seqlens_in_batch = attention_mask.sum(dim=-1, dtype=torch.int32)
+    # 计算每个batch中的有效token的索引
     indices = torch.nonzero(attention_mask.flatten(), as_tuple=False).flatten()
+    # 返回所有batch中的最大有效长度
     max_seqlen_in_batch = seqlens_in_batch.max().item()
+    
     cu_seqlens = F.pad(torch.cumsum(seqlens_in_batch, dim=0, dtype=torch.torch.int32), (1, 0))
     # TD [2022-03-04] We don't want to index with a bool mask, because Pytorch will expand the
     # bool mask, then call nonzero to get the indices, then index with those. The indices is @dim

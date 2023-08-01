@@ -79,6 +79,7 @@ inline __device__ void compute_attn_1rowblock(const Params &params, const int bi
     using index_t = typename Kernel_traits::index_t;
 
     // Shared memory.
+    // 缓存Q、K、V数据
     extern __shared__ char smem_[];
 
     // The thread index.
@@ -87,6 +88,7 @@ inline __device__ void compute_attn_1rowblock(const Params &params, const int bi
     constexpr int kBlockM = Kernel_traits::kBlockM;
     constexpr int kBlockN = Kernel_traits::kBlockN;
     constexpr int kHeadDim = Kernel_traits::kHeadDim;
+    // 参数用于分块计算
     constexpr int kNWarps = Kernel_traits::kNWarps;
     constexpr int MMA_M = kBlockM / decltype(size<0>(typename Kernel_traits::TiledMma::TiledShape_MNK{}))::value;
 

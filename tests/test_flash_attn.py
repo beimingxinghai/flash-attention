@@ -28,6 +28,7 @@ is_sm90 = torch.cuda.get_device_capability("cuda") == (9, 0)
 
 def generate_random_padding_mask(max_seqlen, batch_size, device, mode="random"):
     assert mode in ["full", "random", "third"]
+    # 产生batch size大小的tensor, 存储各个seq len, 每个seq len长度小于max_seqlen
     if mode == "full":
         lengths = torch.full((batch_size, 1), max_seqlen, device=device, dtype=torch.int32)
     elif mode == "random":
@@ -36,6 +37,7 @@ def generate_random_padding_mask(max_seqlen, batch_size, device, mode="random"):
         )
     elif mode == "third":
         lengths = torch.randint(max_seqlen // 3, max_seqlen + 1, (batch_size, 1), device=device)
+    # 对于不同长度seq, 超出长度范围为False, 其余为True
     padding_mask = (
         repeat(torch.arange(max_seqlen, device=device), "s -> b s", b=batch_size) < lengths
     )
@@ -50,8 +52,8 @@ def generate_qkv(
         q: (batch_size, seqlen_q, nheads, d)
         k: (batch_size, seqlen_k, nheads_k, d)
         v: (batch_size, seqlen_k, nheads_k, d)
-        query_padding_mask: (batch_size, seqlen), bool
-        key_padding_mask: (batch_size, seqlen), bool
+        query_padding_mask: (batch_size, max_seqlen), bool
+        key_padding_mask: (batch_size, max_seqlen), bool
     """
     assert not (kvpacked and qkvpacked)
     batch_size, seqlen_q, nheads, d = q.shape
@@ -60,6 +62,7 @@ def generate_qkv(
     assert v.shape == (batch_size, seqlen_k, nheads_k, d)
 
     if query_padding_mask is not None:
+        # 将不同长度batch seq的padding去掉后，拼接成一个长的seq
         q_unpad, indices_q, cu_seqlens_q, max_seqlen_q = unpad_input(q, query_padding_mask)
         output_pad_fn = lambda output_unpad: pad_input(
             output_unpad, indices_q, batch_size, seqlen_q

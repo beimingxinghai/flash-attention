@@ -42,6 +42,7 @@ def _get_block_size(device, head_dim, is_dropout, is_causal):
 
 
 def _flash_attn_forward(q, k, v, dropout_p, softmax_scale, causal, return_softmax):
+    # 在内存中编程连续的tensor
     maybe_contiguous = lambda x: x.contiguous() if x.stride(-1) != 1 else x
     q, k, v = [maybe_contiguous(x) for x in (q, k, v)]
     out, q, k, v, out_padded, softmax_lse, S_dmask, rng_state = flash_attn_cuda.fwd(
@@ -261,6 +262,9 @@ class FlashAttnKVPackedFunc(torch.autograd.Function):
     def forward(ctx, q, kv, dropout_p, softmax_scale, causal, return_softmax):
         if softmax_scale is None:
             softmax_scale = q.shape[-1] ** (-0.5)
+        # kv: (batch_size, seqlen, 2, nheads_k, headdim)
+        # 一个tensor存储kv cache, 传入参数时分开，如果是离散存储
+        # 可以传入block size * head dim的tensor数组
         out, q, k, v, out_padded, softmax_lse, S_dmask, rng_state = _flash_attn_forward(
             q,
             kv[:, :, 0],
